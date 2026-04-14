@@ -1,36 +1,53 @@
 """
 Shared fixtures for axor_core tests.
 """
+
 from __future__ import annotations
 
 import asyncio
-import pytest
-from typing import AsyncIterator, Any
+from typing import Any, AsyncIterator
 
+import pytest
+from axor_core.capability.executor import CapabilityExecutor, ToolHandler
 from axor_core.contracts.cancel import make_token
 from axor_core.contracts.context import (
-    ContextView, ContextFragment, LineageSummary, RawExecutionState
+    ContextFragment,
+    ContextView,
+    LineageSummary,
+    RawExecutionState,
 )
-from axor_core.contracts.envelope import ExecutionEnvelope, Capabilities, ExportContract
+from axor_core.contracts.envelope import (
+    Capabilities,
+    ExecutionEnvelope,
+    ExportContract,
+)
 from axor_core.contracts.invokable import Invokable
 from axor_core.contracts.policy import (
-    ExecutionPolicy, TaskComplexity, ContextMode,
-    CompressionMode, ChildMode, ExportMode, ToolPolicy,
+    ChildMode,
+    CompressionMode,
+    ContextMode,
+    ExecutionPolicy,
+    ExportMode,
+    TaskComplexity,
+    ToolPolicy,
 )
-from axor_core.contracts.result import ExecutorEvent, ExecutorEventKind, TokenUsage
-from axor_core.capability.executor import CapabilityExecutor, ToolHandler
-
+from axor_core.contracts.result import ExecutorEvent, ExecutorEventKind
 
 # ── Mock executor ──────────────────────────────────────────────────────────────
+
 
 class EchoExecutor(Invokable):
     """Executor that echoes policy name and emits configurable tool calls."""
 
-    def __init__(self, tool_calls: list[tuple[str, dict]] | None = None) -> None:
+    def __init__(
+        self, tool_calls: list[tuple[str, dict]] | None = None
+    ) -> None:
         self.tool_calls = tool_calls or []
         self.last_envelope: ExecutionEnvelope | None = None
 
-    async def stream(self, envelope: ExecutionEnvelope) -> AsyncIterator[ExecutorEvent]:
+    async def stream(
+        self, envelope: ExecutionEnvelope
+    ) -> AsyncIterator[ExecutorEvent]:
         self.last_envelope = envelope
         for tool_name, args in self.tool_calls:
             yield ExecutorEvent(
@@ -45,7 +62,13 @@ class EchoExecutor(Invokable):
         )
         yield ExecutorEvent(
             kind=ExecutorEventKind.STOP,
-            payload={"usage": {"input_tokens": 100, "output_tokens": 50, "tool_tokens": 20}},
+            payload={
+                "usage": {
+                    "input_tokens": 100,
+                    "output_tokens": 50,
+                    "tool_tokens": 20,
+                }
+            },
             node_id=envelope.node_id,
         )
 
@@ -57,7 +80,9 @@ class SlowExecutor(Invokable):
         self.event_count = event_count
         self.delay = delay
 
-    async def stream(self, envelope: ExecutionEnvelope) -> AsyncIterator[ExecutorEvent]:
+    async def stream(
+        self, envelope: ExecutionEnvelope
+    ) -> AsyncIterator[ExecutorEvent]:
         for i in range(self.event_count):
             await asyncio.sleep(self.delay)
             yield ExecutorEvent(
@@ -67,12 +92,19 @@ class SlowExecutor(Invokable):
             )
         yield ExecutorEvent(
             kind=ExecutorEventKind.STOP,
-            payload={"usage": {"input_tokens": 50, "output_tokens": 25, "tool_tokens": 0}},
+            payload={
+                "usage": {
+                    "input_tokens": 50,
+                    "output_tokens": 25,
+                    "tool_tokens": 0,
+                }
+            },
             node_id=envelope.node_id,
         )
 
 
 # ── Mock tool handlers ─────────────────────────────────────────────────────────
+
 
 class MockReadHandler(ToolHandler):
     def __init__(self, content: str = "file content") -> None:
@@ -102,9 +134,11 @@ class MockBashHandler(ToolHandler):
 
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def read_handler():
     return MockReadHandler()
+
 
 @pytest.fixture
 def cap_executor(read_handler):
@@ -112,9 +146,11 @@ def cap_executor(read_handler):
     ex.register(read_handler)
     return ex
 
+
 @pytest.fixture
 def echo_executor():
     return EchoExecutor()
+
 
 @pytest.fixture
 def focused_policy():
@@ -129,6 +165,7 @@ def focused_policy():
         export_mode=ExportMode.SUMMARY,
     )
 
+
 @pytest.fixture
 def expansive_policy():
     return ExecutionPolicy(
@@ -139,12 +176,15 @@ def expansive_policy():
         child_mode=ChildMode.ALLOWED,
         max_child_depth=3,
         tool_policy=ToolPolicy(
-            allow_read=True, allow_write=True,
-            allow_bash=True, allow_spawn=True,
+            allow_read=True,
+            allow_write=True,
+            allow_bash=True,
+            allow_spawn=True,
         ),
         export_mode=ExportMode.FULL,
         child_context_fraction=0.6,
     )
+
 
 @pytest.fixture
 def root_lineage():
@@ -155,6 +195,7 @@ def root_lineage():
         ancestry_ids=[],
         inherited_restrictions=[],
     )
+
 
 @pytest.fixture
 def raw_state():
@@ -167,16 +208,23 @@ def raw_state():
         lineage=None,
     )
 
+
 @pytest.fixture
 def make_envelope(focused_policy, root_lineage):
     """Factory for test envelopes."""
+
     def _make(policy=None, cancel_token=None):
         p = policy or focused_policy
         ctx = ContextView(
             node_id=root_lineage.node_id,
             working_summary="test task",
             visible_fragments=[
-                ContextFragment(kind="fact", content="test", token_estimate=10, source="test")
+                ContextFragment(
+                    kind="fact",
+                    content="test",
+                    token_estimate=10,
+                    source="test",
+                )
             ],
             active_constraints=[],
             lineage=root_lineage,
@@ -207,4 +255,5 @@ def make_envelope(focused_policy, root_lineage):
             lineage=root_lineage,
             cancel_token=cancel_token or make_token(),
         )
+
     return _make
