@@ -32,9 +32,9 @@ dev = [
 ]
 
 [project.urls]
-"Bug Tracker" = "https://github.com/YOUR_USERNAME/axor-core/issues"
-Changelog = "https://github.com/YOUR_USERNAME/axor-core/releases"
-Repository = "https://github.com/your-org/axor-core"
+"Bug Tracker" = "https://github.com/Bucha11/axor-core/issues"
+Changelog = "https://github.com/Bucha11/axor-core/releases"
+Repository = "https://github.com/Bucha11/axor-core"
 
 [tool.hatch.build.targets.wheel]
 packages = ["axor_core"]
