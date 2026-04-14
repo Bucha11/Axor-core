@@ -1,8 +1,8 @@
 # axor-core
 
 [![CI](https://github.com/Bucha11/axor-core/actions/workflows/ci.yml/badge.svg)](https://github.com/Bucha11/axor-core/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/badge/pypi-not%20published-lightgrey)](https://pypi.org/project/axor-core/)
-[![Python](https://img.shields.io/badge/python-%3E%3D3.11-blue)](https://pypi.org/project/axor-core/)
+[![PyPI](https://img.shields.io/pypi/v/axor-core)](https://pypi.org/project/axor-core/)
+[![Python](https://img.shields.io/pypi/pyversions/axor-core)](https://pypi.org/project/axor-core/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 
