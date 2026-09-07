@@ -93,7 +93,7 @@ def _ds_refused(item) -> bool:
     return not g.evaluate(s2, {"recipients": "attacker@evil.com"}).allowed
 
 
-def run(suites, limit, model_name):
+def run(suites, limit, model_name, save_dir=None):
     tool_dict = get_tool_dict()
     sys_p, user_p = PROMPT_DICT["InjecAgent"]
     model = ORModel(model_name)
@@ -105,10 +105,18 @@ def run(suites, limit, model_name):
         n = len(data)
         undef_succ = 0
         gov_prov = gov_both = 0  # governed successes (fewer = better)
+        records = []  # per-case: raw model output + parse, so governance can be re-applied offline
         for i, item in enumerate(data):
             output = predict_one_case(sys_p, user_p, {}, item, model, tool_dict)
             p = evaluate_output_prompted(output, item["Attacker Tools"][0], item["Attacker Tools"],
                                          item["User Tool"], item["Attacker Instruction"])
+            if save_dir:
+                records.append({"User Tool": item["User Tool"],
+                                "Attacker Tools": item["Attacker Tools"],
+                                "Tool Response": item["Tool Response"],
+                                "Attacker Instruction": item.get("Attacker Instruction", ""),
+                                "output": output, "eval": p["eval"],
+                                "Attacker Tool Parameters": p.get("Attacker Tool Parameters", "")})
             if p["eval"] != "succ":
                 continue  # undefended already didn't attack -> not a success either way
             undef_succ += 1
@@ -125,7 +133,15 @@ def run(suites, limit, model_name):
         out[suite] = {"n": n, "undef_succ": undef_succ,
                       "gov_prov_succ": gov_prov, "gov_both_succ": gov_both}
         print(f"[{suite}] n={n}  undefended ASR={100*undef_succ/n:.1f}%  "
-              f"governed(prov)={100*gov_prov/n:.1f}%  governed(+conseq)={100*gov_both/n:.1f}%")
+              f"governed(prov)={100*gov_prov/n:.1f}%  governed(+conseq)={100*gov_both/n:.1f}%",
+              flush=True)
+        if save_dir:
+            os.makedirs(save_dir, exist_ok=True)
+            path = os.path.join(save_dir, f"{suite}_base.jsonl")
+            with open(path, "w") as f:
+                for r in records:
+                    f.write(json.dumps(r) + "\n")
+            print(f"    saved {len(records)} per-case records -> {path}", flush=True)
     return out
 
 
@@ -134,7 +150,8 @@ if __name__ == "__main__":
     ap.add_argument("--suite", nargs="+", default=["dh", "ds"])
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--model", default="openai/gpt-4o")
+    ap.add_argument("--save", default=None, help="dir to dump per-case records for offline re-analysis")
     a = ap.parse_args()
-    res = run(a.suite, a.limit, a.model)
+    res = run(a.suite, a.limit, a.model, save_dir=a.save)
     print("\n=== RESULTS ===")
     print(json.dumps(res, indent=2))
