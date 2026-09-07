@@ -84,14 +84,51 @@ different axes:**
 We report **both** so the reader sees the pure provenance result *and* the full
 stack, and can judge — the +consequence 0% is not a manipulated headline.
 
-## Real run (needs a model + key)
+## Real run — gpt-4o base (`run_injecagent.py`, full 1,054 cases, ~$8.6)
 
-The mock proves the post-filter; a real ASR number needs a susceptible model
-(headroom) run undefended once, then the same post-filter. `run_injecagent.py`
-(TODO, after a budget top-up) will drive InjecAgent's own harness for the
-undefended pass and apply `govern_injecagent` for the governed column.
+`run_injecagent.py` drives the undefended pass on gpt-4o via OpenRouter and
+applies the post-filter to the same trajectory.
+
+**Model-observed ASR (undefended, gpt-4o):** dh **4.9%** (25/510), ds **13.4%**
+(73/544). gpt-4o is a *capable* model that resists the base attacks largely on
+its own — a small ASR-delta suite, the headroom-dark case (as on AgentDojo's
+robust-model contrast). A susceptible model (Qwen) or the enhanced setting would
+show more headroom.
+
+**Governance (deterministic, over *all* attacks — model-independent):**
+
+- **ds → 100% refused** by the confidentiality floor (all 73 model-successes; the
+  floor is paraphrase-proof and content-blind). Governed ds ASR **0%**.
+- **dh → 504/510 (98.8%) refused**, decomposing cleanly by attack shape:
+
+| dh attack shape | count | caught by |
+|---|---|---|
+| **exfil-shaped** — attacker destination lifted from the read (email/URL/account) | 444 | per-value **taint** (provenance) |
+| **action-shaped, irreversible** — harmful action, no data flow (`BinancePlaceOrder` "sell 50 BTC", `EpicFHIRManage*` records, `DropboxMoveItem`, `FedExShip*`) | 60 | **consequence** axis |
+| **action-shaped, reversible** — `IndoorRobotGoToRoom` (move a robot to a room) | 6 | **correctly NOT gated** |
+
+The 6 that "escape" are *not* a defense gap: moving a robot between rooms is
+recoverable, so the consequence axis rightly leaves it — gating it would be a
+false positive. So governance refuses **every dh attack it should** (504/510),
+and the residual is a correct non-action on a reversible, low-consequence tool.
+
+**Why lowering the content ledger does nothing here (the "short-value" red
+herring).** We checked exact whole-value driving-arg taint (match a driving arg's
+value against the read at *any* length, not just ≥12 chars): it catches **0/42**
+of the action-shaped set. The reason is structural, not a threshold — these
+attacks move **no data**: "sell 50 BTC" arrives as prose in a laptop review and
+the agent *synthesizes* short params (`sell`, `BTC`, `50`) that are nowhere in the
+read. Provenance is blind by construction, not by ledger length. The right axis is
+**consequence** (irreversibility), which is length- and content-agnostic.
+
+**Honest caveat on the domain-extended consequence verbs** (`place/order/manage/
+move/ship`, in `build_config.py`): these are irreversible *in a high-stakes domain*
+but ambiguous in general — in a real deployment they would also flag benign
+`Manage*`/`Move*` **user** tools (a false positive). InjecAgent (all-attack, user
+tools all reads) cannot show that cost; the same consequence axis's FP cost is
+measured on AgentDojo (`workspace` `delete=catastrophic`, part of the −15.5pp).
 
 > Note: InjecAgent does not run out of the box — `requirements.txt` omits
 > `nltk`/`together`/`tqdm`/`pydantic`, and `src/utils.py` builds an OpenAI client
 > at import (needs `OPENAI_API_KEY` set even to import). Install those and export
-> a key (dummy is fine for the mock).
+> a key (a dummy is fine for the mock and the deterministic analysis).

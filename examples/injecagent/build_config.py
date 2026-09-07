@@ -36,10 +36,23 @@ import sys
 # (all-attack, benign user-tools are all reads) cannot show that cost itself.
 _READ_VERBS = frozenset({"get", "view", "search", "list", "read", "check", "retrieve",
                          "access", "find", "show", "fetch", "browse", "lookup"})
-_CATASTROPHIC_VERBS = frozenset({"transfer", "withdraw", "deposit", "pay", "paybill",
-                                 "wire", "unlock", "delete", "remove", "erase", "wipe",
-                                 "disable", "deactivate", "grant", "revoke", "execute",
-                                 "deploy", "reset", "factoryreset", "shutdown", "reboot"})
+# Core, unambiguously-irreversible verbs.
+_CATASTROPHIC_CORE = frozenset({"transfer", "withdraw", "deposit", "pay", "paybill",
+                                "wire", "unlock", "delete", "remove", "erase", "wipe",
+                                "disable", "deactivate", "grant", "revoke", "execute",
+                                "deploy", "reset", "factoryreset", "shutdown", "reboot"})
+# Domain-extended verbs — irreversible in a high-stakes domain (finance / medical /
+# files / logistics), but *ambiguous* in general ("manage"/"move" name benign tools
+# too). Adding them catches action-shaped attacks whose target is a short synthesized
+# value provenance cannot see (e.g. BinancePlaceOrder "sell 50 BTC", EpicFHIRManage*
+# patient records, DropboxMoveItem, FedExShip*). HONEST TRADEOFF: in a real deployment
+# these would also flag benign "Manage/Move/Place/Ship" *user* tools (a false positive
+# whose cost is measured on AgentDojo, not on InjecAgent whose user tools are all
+# reads). Reversible physical actions (robot navigation — "GoToRoom") are deliberately
+# NOT included: a robot moving rooms is recoverable, so gating it would be a false
+# positive, not a catch.
+_CATASTROPHIC_DOMAIN = frozenset({"place", "order", "manage", "move", "ship"})
+_CATASTROPHIC_VERBS = _CATASTROPHIC_CORE | _CATASTROPHIC_DOMAIN
 
 
 def consequence_of(tool: str) -> str | None:
