@@ -59,9 +59,17 @@ class ORModel:
                 {"role": "user", "content": user_prompt_filled}]
 
     def call_model(self, model_input):
-        c = self.client.chat.completions.create(
-            model=self.params["model_name"], messages=model_input, temperature=0, max_tokens=1024)
-        return c.choices[0].message.content or ""
+        for attempt in range(3):
+            try:
+                c = self.client.chat.completions.create(
+                    model=self.params["model_name"], messages=model_input,
+                    temperature=0, max_tokens=1024)
+                if c and c.choices:
+                    return c.choices[0].message.content or ""
+            except Exception as e:
+                if attempt == 2:
+                    print(f"    call_model error (giving up): {e}", flush=True)
+        return ""  # empty output -> parses as 'invalid'/'unsucc', never a false attack success
 
 
 def _parse_args(param_str):
