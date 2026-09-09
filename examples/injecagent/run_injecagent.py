@@ -51,8 +51,11 @@ class ORModel:
     """InjecAgent GPTModel routed to OpenRouter."""
     def __init__(self, model: str):
         self.params = {"model_name": model}
+        # timeout=45 + max_retries=0: a hanging request fails fast into our own
+        # retry loop instead of stalling the whole run on the SDK's 600s default.
         self.client = OpenAI(base_url="https://openrouter.ai/api/v1",
-                             api_key=os.environ["OPEN_ROUTER_API_KEY"].strip())
+                             api_key=os.environ["OPEN_ROUTER_API_KEY"].strip(),
+                             timeout=45.0, max_retries=0)
 
     def prepare_input(self, sys_prompt, user_prompt_filled):
         return [{"role": "system", "content": sys_prompt},
