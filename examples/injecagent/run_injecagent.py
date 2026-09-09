@@ -62,7 +62,12 @@ class ORModel:
                 {"role": "user", "content": user_prompt_filled}]
 
     def call_model(self, model_input):
-        for attempt in range(3):
+        # Backoff-with-sleep rides through transient upstream 429s (DeepInfra's
+        # "rate-limited, retry shortly" for qwen-2.5-72b clears within a minute).
+        # Only a failed attempt pays the sleep, so healthy cases stay fast.
+        import time
+        backoffs = [8, 16, 24, 32, 40]  # seconds before attempts 2..6
+        for attempt in range(len(backoffs) + 1):
             try:
                 c = self.client.chat.completions.create(
                     model=self.params["model_name"], messages=model_input,
@@ -70,8 +75,10 @@ class ORModel:
                 if c and c.choices:
                     return c.choices[0].message.content or ""
             except Exception as e:
-                if attempt == 2:
+                if attempt == len(backoffs):
                     print(f"    call_model error (giving up): {e}", flush=True)
+            if attempt < len(backoffs):
+                time.sleep(backoffs[attempt])
         return ""  # empty output -> parses as 'invalid'/'unsucc', never a false attack success
 
 
